@@ -5,10 +5,10 @@
 
 enum errors { ERR_CR_WITHOUT_LF = 1 };
 
-const int sequence_area = 0;      /* start of sequence area */
-const int indicator_position = 6; /* start and end of indicator area */
-const int a_margin  = 7;          /* start of A margin */
-const int comment_area  = 72;     /* start of comment area */
+const int sequence_area      =  0; /* start of sequence area */
+const int indicator_position =  6; /* start and end of indicator area */
+const int a_margin           =  7; /* start of A margin */
+const int comment_area       = 72; /* start of comment area */
 
 /* The comment area is not stored in the card variable. Thus: */
 #define CARD_SIZE 72
