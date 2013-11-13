@@ -37,6 +37,9 @@ treated like normal lines.
 Comment lines have one of the following in the indicator area: an asterisk (*),
 a slash (/), or a dollar sign ($).
 
+Lines may continue beyond the comment area, but anything past column 80 is
+considered to be a comment.
+
 CAVEATS
 =======
 
