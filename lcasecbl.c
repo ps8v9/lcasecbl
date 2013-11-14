@@ -24,7 +24,7 @@ void print_card();
 void print_comment_area();
 void print_linebreaks();
 bool print_comment_paragraph();
-int my_strnicmp(const char *a, const char *b, size_t count);
+int  cbl_strnicmp(const char *a, const char *B, size_t count);
 
 int main(int argc, char *argv[])
 {
@@ -87,7 +87,7 @@ void print_card()
     else
         return;
 
-    /* Print the indicator area as lowercase. */
+    /* Print the indicator area in lowercase. */
     if ((indicator = card[indicator_position]))
         putchar(tolower(indicator));
     else
@@ -104,7 +104,7 @@ void print_card()
             return;
 
         /*
-         * If still here, print the A and B margins as lowercase, with the
+         * If still here, print the A and B margins in lowercase, with the
          * exception of literals and pseudo-text.
          */
         if (card[a_margin])
@@ -159,7 +159,8 @@ void print_linebreaks()
 
 bool print_comment_paragraph()
 {
-    char* para[] = {
+    /* The strings in this array must be uppercase! See cbl_strnicmp(). */
+    static const char* const para[] = {
         "AUTHOR.",
         "INSTALLATION.",
         "DATE-WRITTEN.",
@@ -167,27 +168,35 @@ bool print_comment_paragraph()
         "SECURITY.",
         "REMARKS."
     };
-
+    static const int len[] = { 7, 13, 13, 14, 9, 8 };
     static const int size = sizeof para / sizeof(char*);
 
     for (int i = 0; i < size; ++i) {
-        int len = strlen(para[i]);
-        if (strlen(card + a_margin) >= len)
-            if (my_strnicmp(card + a_margin, para[i], len) == 0) {
-                for (int j = 0; j < len; ++j)
+        if (strlen(card + a_margin) >= len[i])
+            if (cbl_strnicmp(card + a_margin, para[i], len[i]) == 0) {
+                /* Match found. Print the lowercase paragraph name. */
+                for (int j = 0; j < len[i]; ++j)
                     putchar(tolower(para[i][j]));
-                printf("%s", card + a_margin + len);
+                /* Print the rest of the line verbatim. */
+                printf("%s", card + a_margin + len[i]);
                 return true;
             }
     }
     return false;
 }
 
-int my_strnicmp(const char *a, const char *b, size_t count)
+/*
+ * cbl_strnicmp: Case-insensitive comparison optimized for uppercase input.
+ *               Caller must pass B in all-uppercase, which eliminates the need
+ *               for this function to uppercase it. Since parameter a is COBOL,
+ *               it is most likely already uppercase, so toupper() should be
+ *               a fairly efficient operation on the characters in a.
+ */
+int cbl_strnicmp(const char *a, const char *B, size_t count)
 {
     int diff = 0;
 
     while (!diff && *a && count--)
-        diff = (tolower(*a++) - tolower(*b++));
+        diff = (toupper(*a++) - *B++);
     return diff;
 }
