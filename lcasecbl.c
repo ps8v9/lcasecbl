@@ -4,7 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum errors { ERR_CR_WITHOUT_LF = 1 };
+enum contexts { CODE, LITERAL, PSEUDOTEXT };
+enum errors   { CR_WITHOUT_LF = 1 };
 
 const int sequence_area      =  0; /* start of sequence area */
 const int indicator_position =  6; /* start and end of indicator area */
@@ -77,8 +78,7 @@ void print_card()
 {
     char indicator;
     char quote;
-    bool in_literal     = false;
-    bool in_pseudo_text = false;
+    enum contexts context = CODE;
 
     /* Print the sequence area verbatim. */
     if (card[sequence_area])
@@ -109,21 +109,25 @@ void print_card()
          */
         if (card[a_margin])
            for (int i = a_margin; i < comment_area && card[i]; ++i)
-               if (!in_literal && !in_pseudo_text) {
-                   putchar(tolower(card[i]));
-                   if (card[i] == '"' || card[i] == '\'') {
-                       in_literal = true;
-                       quote = card[i];
-                   } else if (card[i - 1] == '=' && card[i] == '=')
-                       in_pseudo_text = true;
-               } else if (in_literal) {
-                   putchar(card[i]);
-                   if (card[i] == quote)
-                       in_literal = false;
-               } else if (in_pseudo_text) {
-                   putchar(card[i]);
-                   if (card[i] == '=')
-                       in_pseudo_text = false;
+               switch (context) {
+                   case CODE:
+                       putchar(tolower(card[i]));
+                       if (card[i] == '"' || card[i] == '\'') {
+                           context = LITERAL;
+                           quote = card[i];
+                       } else if (card[i - 1] == '=' && card[i] == '=')
+                           context = PSEUDOTEXT;
+                       break;
+                   case LITERAL:
+                       putchar(card[i]);
+                       if (card[i] == quote)
+                           context = CODE;
+                       break;
+                   case PSEUDOTEXT:
+                       putchar(card[i]);
+                       if (card[i] == '=' && card[i + 1] == '=')
+                           context = CODE;
+                       break;
                }
     }
 }
@@ -146,7 +150,7 @@ void print_linebreaks()
                 putchar('\n');
             else {
                 fprintf(stderr, "%s: bad linebreak (CR without LF)\n", program);
-                exit (ERR_CR_WITHOUT_LF);
+                exit (CR_WITHOUT_LF);
             }
             ch = '\0';
             break;
