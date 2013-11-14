@@ -25,7 +25,7 @@ void print_card();
 void print_comment_area();
 void print_linebreaks();
 bool print_comment_paragraph();
-int  cbl_strnicmp(const char *A, const char *b, size_t count);
+int  ascii_strnicmp(const char *a, const char *b, size_t count);
 
 int main(int argc, char *argv[])
 {
@@ -163,7 +163,6 @@ void print_linebreaks()
 
 bool print_comment_paragraph()
 {
-    /* The strings in this array must be uppercase! See cbl_strnicmp(). */
     static const char* const para[] = {
         "AUTHOR.",
         "INSTALLATION.",
@@ -177,7 +176,7 @@ bool print_comment_paragraph()
 
     for (int i = 0; i < size; ++i) {
         if (strlen(card + a_margin) >= len[i])
-            if (cbl_strnicmp(para[i], card + a_margin, len[i]) == 0) {
+            if (ascii_strnicmp(para[i], card + a_margin, len[i]) == 0) {
                 /* Match found. Print the lowercase paragraph name. */
                 for (int j = 0; j < len[i]; ++j)
                     putchar(tolower(para[i][j]));
@@ -189,18 +188,12 @@ bool print_comment_paragraph()
     return false;
 }
 
-/*
- * cbl_strnicmp: Case-insensitive comparison optimized for uppercase input.
- *               Caller must pass A in all-uppercase, which eliminates the need
- *               for this function to uppercase it. Since parameter b is COBOL,
- *               it is most likely already uppercase, so toupper() should be
- *               a fairly efficient operation on the characters in b.
- */
-int cbl_strnicmp(const char *A, const char *b, size_t count)
+/* ascii_strnicmp: Case-insensitive ASCII string comparison. */
+int ascii_strnicmp(const char *a, const char *b, size_t count)
 {
     int diff = 0;
 
-    while (!diff && *A && count--)
-        diff = (*A++ - toupper(*b++));
+    while (!diff && *a && count--)
+        diff = (toupper(*a++) - toupper(*b++));
     return diff;
 }
