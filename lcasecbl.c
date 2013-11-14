@@ -11,7 +11,7 @@ const int a_margin           =  7; /* start of A margin */
 const int comment_area       = 72; /* start of comment area */
 
 /* The comment area is not stored in the card variable. Thus: */
-#define CARD_SIZE 72
+#define CARD_SIZE 73
 
 char *program;         /* argv[0] */
 char card[CARD_SIZE];  /* one card from the program's deck */
@@ -26,7 +26,7 @@ void print_linebreaks();
 int main(int argc, char *argv[])
 {
     program = argv[0];
-    ch = 0;
+    ch = '\0';
 
     while (ch != EOF) {
         if (!get_card())
@@ -72,9 +72,10 @@ int get_card()
 
 void print_card()
 {
-    bool in_literal = false;
     char indicator;
-    char delimiter;
+    char quote;
+    bool in_literal     = false;
+    bool in_pseudo_text = false;
 
     /* Print the sequence area verbatim. */
     if (card[sequence_area])
@@ -95,19 +96,27 @@ void print_card()
             for (int i = a_margin; i < comment_area && card[i]; ++i)
                 putchar(card[i]);
     } else {
-         /* Print the A and B margins as lowercase, with verbatim literals. */
+         /*
+          * Print the A and B margins as lowercase, with the exception of
+          * literals and pseudo-text.
+          */
          if (card[a_margin])
             for (int i = a_margin; i < comment_area && card[i]; ++i)
-                if (!in_literal) {
+                if (!in_literal && !in_pseudo_text) {
                     putchar(tolower(card[i]));
                     if (card[i] == '"' || card[i] == '\'') {
                         in_literal = true;
-                        delimiter = card[i];
-                    }
-                } else {
+                        quote = card[i];
+                    } else if (card[i - 1] == '=' && card[i] == '=')
+                        in_pseudo_text = true;
+                } else if (in_literal) {
                     putchar(card[i]);
-                    if (card[i] == delimiter)
+                    if (card[i] == quote)
                         in_literal = false;
+                } else if (in_pseudo_text) {
+                    putchar(card[i]);
+                    if (card[i] == '=')
+                        in_pseudo_text = false;
                 }
     }
 }
@@ -129,7 +138,7 @@ void print_linebreaks()
             if ((ch = getchar()) == '\n')
                 putchar('\n');
             else {
-                fprintf(stderr, "%s: bad data (CR without LF)\n", program);
+                fprintf(stderr, "%s: bad linebreak (CR without LF)\n", program);
                 exit (ERR_CR_WITHOUT_LF);
             }
             ch = '\0';

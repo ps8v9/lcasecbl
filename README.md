@@ -18,7 +18,8 @@ The only exception is that the comment area is allowed to be arbitrarily long.
 This is done to prevent truncation of overlong comments.
 
 The code is assumed to compile, so that unexpected conditions like unterminated
-alphanumeric literals will not occur. Continuation lines are supported.
+alphanumeric literals and empty pseudo-text will not occur. Continuation lines
+are supported.
 
 Alphanumeric and hex literals are assumed to be delimited in the following ways:
 
