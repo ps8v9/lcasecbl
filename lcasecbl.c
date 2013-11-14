@@ -24,7 +24,7 @@ void print_card();
 void print_comment_area();
 void print_linebreaks();
 bool print_comment_paragraph();
-int  cbl_strnicmp(const char *a, const char *B, size_t count);
+int  cbl_strnicmp(const char *A, const char *b, size_t count);
 
 int main(int argc, char *argv[])
 {
@@ -173,7 +173,7 @@ bool print_comment_paragraph()
 
     for (int i = 0; i < size; ++i) {
         if (strlen(card + a_margin) >= len[i])
-            if (cbl_strnicmp(card + a_margin, para[i], len[i]) == 0) {
+            if (cbl_strnicmp(para[i], card + a_margin, len[i]) == 0) {
                 /* Match found. Print the lowercase paragraph name. */
                 for (int j = 0; j < len[i]; ++j)
                     putchar(tolower(para[i][j]));
@@ -187,16 +187,16 @@ bool print_comment_paragraph()
 
 /*
  * cbl_strnicmp: Case-insensitive comparison optimized for uppercase input.
- *               Caller must pass B in all-uppercase, which eliminates the need
- *               for this function to uppercase it. Since parameter a is COBOL,
+ *               Caller must pass A in all-uppercase, which eliminates the need
+ *               for this function to uppercase it. Since parameter b is COBOL,
  *               it is most likely already uppercase, so toupper() should be
- *               a fairly efficient operation on the characters in a.
+ *               a fairly efficient operation on the characters in b.
  */
-int cbl_strnicmp(const char *a, const char *B, size_t count)
+int cbl_strnicmp(const char *A, const char *b, size_t count)
 {
     int diff = 0;
 
-    while (!diff && *a && count--)
-        diff = (toupper(*a++) - *B++);
+    while (!diff && *A && count--)
+        diff = (*A++ - toupper(*b++));
     return diff;
 }
