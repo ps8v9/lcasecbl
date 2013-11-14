@@ -16,7 +16,7 @@ const int comment_area       = 72; /* start of comment area */
 #define CARD_SIZE 73
 
 char *program;         /* argv[0] */
-char card[CARD_SIZE];  /* one card from the program's deck */
+char card[CARD_SIZE];  /* null-terminated card from the program's deck */
 bool has_comment_area; /* current card has a comment area */
 char ch;               /* last character read */
 
@@ -94,7 +94,7 @@ void print_card()
         return;
 
     if (indicator == '*' || indicator == '/' || indicator == '$') {
-        /* This is a comment line. Print the A and B margins verbatim. */
+        /* Comment line. Print the A and B margins verbatim. */
         if (card[a_margin])
             for (int i = a_margin; i < comment_area && card[i]; ++i)
                 putchar(card[i]);
@@ -103,10 +103,7 @@ void print_card()
         if (print_comment_paragraph())
             return;
 
-        /*
-         * If still here, print the A and B margins in lowercase, with the
-         * exception of literals and pseudo-text.
-         */
+        /* Print A + B margins in lowercase (except literals and pseudotext). */
         if (card[a_margin])
            for (int i = a_margin; i < comment_area && card[i]; ++i)
                switch (context) {
