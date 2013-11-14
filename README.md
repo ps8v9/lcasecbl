@@ -3,12 +3,17 @@ lcasecbl
 
 C utility to format COBOL in lowercase.
 
-Comment lines, alphanumeric literals, hex literals, pseudo-text, the sequence
-area, the indicator area, and the comment area are not changed. The comment
-area is considered to extend from column 73 through the end of the line.
+The following are excluded from being converted to lowercase:
 
-Everything else is converted to lowercase. This is not necessarily valid for
-all COBOL dialects.
+    comment lines
+    sequence area  (columns 1-6)
+    indicator area (column 7)
+    comment area   (column 73 through end of line)
+    alphanumeric literals
+    hexadecimal literals
+    pseudo-text
+
+Everything else is converted to lowercase. This is not necessarily valid.
 
 ASSUMPTIONS
 ===========
@@ -18,8 +23,8 @@ The only exception is that the comment area is allowed to be arbitrarily long.
 This is done to prevent truncation of overlong comments.
 
 The code is assumed to compile, so that unexpected conditions like unterminated
-alphanumeric literals and empty pseudo-text will not occur. Continuation lines
-are supported.
+alphanumeric literals and unterminated pseudo-text will not occur. Continuation
+lines are supported.
 
 Alphanumeric and hex literals are assumed to be delimited in the following ways:
 

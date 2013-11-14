@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 enum errors { ERR_CR_WITHOUT_LF = 1 };
 
@@ -18,10 +19,12 @@ char card[CARD_SIZE];  /* one card from the program's deck */
 bool has_comment_area; /* current card has a comment area */
 char ch;               /* last character read */
 
-int get_card();
+int  get_card();
 void print_card();
 void print_comment_area();
 void print_linebreaks();
+bool print_comment_paragraph();
+int my_strnicmp(const char *a, const char *b, size_t count);
 
 int main(int argc, char *argv[])
 {
@@ -96,28 +99,32 @@ void print_card()
             for (int i = a_margin; i < comment_area && card[i]; ++i)
                 putchar(card[i]);
     } else {
-         /*
-          * Print the A and B margins as lowercase, with the exception of
-          * literals and pseudo-text.
-          */
-         if (card[a_margin])
-            for (int i = a_margin; i < comment_area && card[i]; ++i)
-                if (!in_literal && !in_pseudo_text) {
-                    putchar(tolower(card[i]));
-                    if (card[i] == '"' || card[i] == '\'') {
-                        in_literal = true;
-                        quote = card[i];
-                    } else if (card[i - 1] == '=' && card[i] == '=')
-                        in_pseudo_text = true;
-                } else if (in_literal) {
-                    putchar(card[i]);
-                    if (card[i] == quote)
-                        in_literal = false;
-                } else if (in_pseudo_text) {
-                    putchar(card[i]);
-                    if (card[i] == '=')
-                        in_pseudo_text = false;
-                }
+        /* Special handling for comment-entry paragraphs. */
+        if (print_comment_paragraph())
+            return;
+
+        /*
+         * If still here, print the A and B margins as lowercase, with the
+         * exception of literals and pseudo-text.
+         */
+        if (card[a_margin])
+           for (int i = a_margin; i < comment_area && card[i]; ++i)
+               if (!in_literal && !in_pseudo_text) {
+                   putchar(tolower(card[i]));
+                   if (card[i] == '"' || card[i] == '\'') {
+                       in_literal = true;
+                       quote = card[i];
+                   } else if (card[i - 1] == '=' && card[i] == '=')
+                       in_pseudo_text = true;
+               } else if (in_literal) {
+                   putchar(card[i]);
+                   if (card[i] == quote)
+                       in_literal = false;
+               } else if (in_pseudo_text) {
+                   putchar(card[i]);
+                   if (card[i] == '=')
+                       in_pseudo_text = false;
+               }
     }
 }
 
@@ -148,4 +155,39 @@ void print_linebreaks()
             ch = '\0';
             break;
     }
+}
+
+bool print_comment_paragraph()
+{
+    char* para[] = {
+        "AUTHOR.",
+        "INSTALLATION.",
+        "DATE-WRITTEN.",
+        "DATE-COMPILED.",
+        "SECURITY.",
+        "REMARKS."
+    };
+
+    static const int size = sizeof para / sizeof(char*);
+
+    for (int i = 0; i < size; ++i) {
+        int len = strlen(para[i]);
+        if (strlen(card + a_margin) >= len)
+            if (my_strnicmp(card + a_margin, para[i], len) == 0) {
+                for (int j = 0; j < len; ++j)
+                    putchar(tolower(para[i][j]));
+                printf("%s", card + a_margin + len);
+                return true;
+            }
+    }
+    return false;
+}
+
+int my_strnicmp(const char *a, const char *b, size_t count)
+{
+    int diff = 0;
+
+    while (!diff && *a && count--)
+        diff = (tolower(*a++) - tolower(*b++));
+    return diff;
 }
