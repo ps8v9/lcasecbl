@@ -42,8 +42,8 @@ bool get_card();
 bool is_comment_line();
 bool is_comment_par();
 bool is_normal_line();
-bool is_debugging_line();
 bool is_continuation_line();
+bool is_debugging_line();
 
 void print_card();
 void print_seq_area();
@@ -100,13 +100,11 @@ bool get_card()
 /* print_card: Print the current card. */
 void print_card()
 {
-    /* Print the sequence area verbatim. */
     if (card[seq_area])
         print_seq_area();
     else
         return;
 
-    /* Print the indicator area in lowercase. */
     if (card[ind_area])
         print_ind_area();
     else
@@ -285,7 +283,7 @@ void print_linebreaks()
                 putchar('\n');
             else {
                 fprintf(stderr, "%s: bad linebreak (CR without LF)\n", program);
-                exit (CR_WITHOUT_LF);
+                exit(CR_WITHOUT_LF);
             }
             ch = '\0';
             break;
