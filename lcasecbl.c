@@ -6,17 +6,18 @@
 #include <string.h>
 
 /* These magic number will never change. Fixed format is fixed forever. */
+#define CARD_SIZE 73
 const int seq_area     =  0; /* start of sequence area */
 const int ind_area     =  6; /* start and end of indicator area */
 const int a_margin     =  7; /* start of A margin */
 const int comment_area = 72; /* start of comment area */
 
-#define CARD_SIZE 73
-
+/* Columns 73+ are not ignored. They're just not stored in this struct. */
 struct card_format {
     char data[CARD_SIZE];  /* a null-terminated card from the program's deck */
+    bool is_blank;         /* is the card blank? */
+    bool has_comment_area; /* does the card have a comment area? */
     int  areas_printed;    /* which areas have been printed from the card? */
-    bool has_comment_area; /* does the current card have a comment area? */
 };
 
 struct result {
@@ -64,7 +65,7 @@ struct result echo_linebreaks();
 
 int ps8_strnicmp(const char *a, const char *b, size_t count);
 
-const char* program; /* argv[0] */
+const char* program;
 struct card_format card;
 
 int main(int argc, char *argv[])
@@ -74,7 +75,7 @@ int main(int argc, char *argv[])
 
     while (true) {
         r = read_card();
-        if (r.bytes_read)
+        if (! card.is_blank)
             print_card();
         if (r.eof)
             break;
@@ -93,7 +94,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-/* read_card: Read next card from stdin, and return number of chars read. */
+/* read_card: Read next card from stdin. */
 struct result read_card()
 {
     struct result r = { 0, false, false };
@@ -106,6 +107,7 @@ struct result read_card()
             card.data[i] = '\0';
         else
             break;
+    card.is_blank = true;
     card.has_comment_area = false;
     card.areas_printed = NO_AREAS;
     i = 0;
@@ -126,6 +128,8 @@ struct result read_card()
 
     r.bytes_read = i;
     r.eof = (ch == EOF);
+    card.is_blank = (! r.bytes_read);
+
     return r;
 }
 
