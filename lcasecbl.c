@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* These magic number will never change. Fixed format is fixed forever. */
+/* These magic numbers will never change. Fixed format is fixed forever. */
 #define CARD_SIZE 73
 const int seq_area     =  0; /* start of sequence area */
 const int ind_area     =  6; /* start and end of indicator area */
@@ -21,9 +21,8 @@ struct card_format {
 };
 
 struct result {
-    size_t bytes_read;
-    bool   end_of_line;
-    bool   eof;
+    bool end_of_line;
+    bool eof;
 };
 
 enum areas {
@@ -71,7 +70,7 @@ struct card_format card;
 int main(int argc, char *argv[])
 {
     program = argv[0];
-    struct result r = { 0, false, false };
+    struct result r = { false, false };
 
     while (true) {
         r = read_card();
@@ -97,7 +96,7 @@ int main(int argc, char *argv[])
 /* read_card: Read next card from stdin. */
 struct result read_card()
 {
-    struct result r = { 0, false, false };
+    struct result r = { false, false };
     int ch;
     int i;
 
@@ -126,9 +125,8 @@ struct result read_card()
         }
     }
 
-    r.bytes_read = i;
+    card.is_blank = (i == 0);
     r.eof = (ch == EOF);
-    card.is_blank = (! r.bytes_read);
 
     return r;
 }
@@ -209,10 +207,8 @@ bool is_continuation_line()
 void print_seq_area()
 {
     assert(card.areas_printed == NO_AREAS);
-
     for (int i = seq_area; i < ind_area && card.data[i]; ++i)
         putchar(card.data[i]);
-
     card.areas_printed |= SEQ_AREA;
 }
 
@@ -220,9 +216,7 @@ void print_seq_area()
 void print_ind_area()
 {
     assert(card.areas_printed == SEQ_AREA);
-
     putchar(tolower(card.data[ind_area]));
-
     card.areas_printed |= IND_AREA;
 }
 
@@ -231,10 +225,8 @@ void print_comment_line()
 {
     assert(is_comment_line());
     assert(card.areas_printed == (SEQ_AREA | IND_AREA));
-
     for (int i = a_margin; i < comment_area && card.data[i]; ++i)
         putchar(card.data[i]);
-
     card.areas_printed |= A_MARGIN | B_MARGIN;
 }
 
@@ -296,7 +288,7 @@ struct result echo_comment_area()
 {
     assert(card.areas_printed == (SEQ_AREA | IND_AREA | A_MARGIN | B_MARGIN));
 
-    struct result r = { 0, false, false };
+    struct result r = { false, false };
     int ch;
 
     while ((ch = getchar()) != EOF) {
@@ -304,30 +296,27 @@ struct result echo_comment_area()
             ungetc(ch, stdin);
             break;
         }
-        ++r.bytes_read;
         putchar(ch);
     }
-    r.eof = (ch == EOF);
 
+    r.eof = (ch == EOF);
     card.areas_printed |= A_MARGIN | B_MARGIN;
+
     return r;
 }
 
 /* echo_linebreaks: Read and print linebreaks until non-blank line or EOF. */
 struct result echo_linebreaks()
 {
-    struct result r = { 0, false, false };
+    struct result r = { false, false };
     bool done;
     char ch;
 
     while (! done) {
         switch (ch = getchar()) {
             case '\r':
-                r.bytes_read++;
                 putchar(ch);
-                if ((ch = getchar()) != EOF)
-                    r.bytes_read++;
-                if (ch == '\n')
+                if ((ch = getchar()) == '\n')
                     putchar('\n');
                 else {
                     fprintf(stderr, "%s: bad input (CR without LF)\n", program);
@@ -335,7 +324,6 @@ struct result echo_linebreaks()
                 }
                 break;
             case '\n':
-                r.bytes_read++;
                 putchar(ch);
                 break;
             case EOF:
