@@ -38,7 +38,7 @@ int  areas_printed;    /* which areas have been printed from the card? */
 bool has_comment_area; /* does the current card have a comment area? */
 bool eof;              /* has EOF been reached on standard input? */
 
-int  read_card();
+int read_card();
 
 bool is_comment_line();
 bool is_comment_par();
@@ -64,8 +64,8 @@ int main(int argc, char *argv[])
     eof = false;
 
     while (!eof) {
-        read_card();
-        print_card();
+        if (read_card())
+            print_card();
         if (!eof)
             echo_linebreaks();
     }
@@ -134,8 +134,8 @@ void print_card()
 /* is_comment_line: Is the card a comment line? */
 bool is_comment_line()
 {
-    char i = card[ind_area];
-    return (i == '*' || i == '/' || i == '$');
+    char ind = card[ind_area];
+    return (ind == '*' || ind == '/' || ind == '$');
 }
 
 /* is_comment_par: Is the card a documentation-only paragraph? */
