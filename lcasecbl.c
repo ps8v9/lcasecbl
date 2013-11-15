@@ -34,11 +34,12 @@ const int comment_area = 72; /* start of comment area */
 
 const char* program;   /* argv[0] */
 char card[CARD_SIZE];  /* a null-terminated card from the program's deck */
+int  areas_printed;    /* which areas have been printed from the card? */
 bool has_comment_area; /* does the current card have a comment area? */
-char ch;               /* the last character read */
-int areas_printed;     /* which areas have been printed from the card? */
+bool eof;              /* has EOF been reached on standard input? */
 
-bool get_card();
+int  read_card();
+
 bool is_comment_line();
 bool is_comment_par();
 bool is_normal_line();
@@ -51,23 +52,29 @@ void print_ind_area();
 void print_comment_par();
 void print_comment_line();
 void print_code_line();
-void print_comment_area();
-void print_linebreaks();
+
+void echo_comment_area();
+void echo_linebreaks();
 
 int  ascii_strnicmp(const char *a, const char *b, size_t count);
 
 int main(int argc, char *argv[])
 {
     program = argv[0];
-    ch = '\0';
+    eof = false;
 
-    while (get_card())
+    while (!eof) {
+        read_card();
         print_card();
+        if (!eof)
+            echo_linebreaks();
+    }
 }
 
-/* get_card: Get next card from standard input. */
-bool get_card()
+/* read_card: Read next card from stdin, and return number of chars read. */
+int read_card()
 {
+    int ch;
     int i;
 
     /* Reset the card. */
@@ -78,23 +85,23 @@ bool get_card()
             break;
     has_comment_area = false;
     areas_printed = NO_AREAS;
-
     i = 0;
-    if (ch)
-        card[i++] = ch; /* Start the card with the last character read. */
 
     /* Read each card position until comment area, linebreak, or EOF. */
     while ((ch = getchar()) != EOF) {
-        if (ch == '\r' || ch == '\n')
+        if (ch == '\r' || ch == '\n') {
+            ungetc(ch, stdin);
             break;
+        }
         card[i++] = ch;
         if (i == comment_area) {
             has_comment_area = true;
             break;
         }
     }
+    eof = (ch == EOF);
 
-    return (i > 0 || ch != EOF);
+    return i;
 }
 
 /* print_card: Print the current card. */
@@ -121,9 +128,7 @@ void print_card()
         return;
 
     if (has_comment_area)
-        print_comment_area();
-
-    print_linebreaks();
+        echo_comment_area();
 }
 
 /* is_comment_line: Is the card a comment line? */
@@ -171,7 +176,7 @@ bool is_continuation_line()
     return (card[ind_area] == '-');
 }
 
-/* print_seq_area: Print the sequence area verbatim. */
+/* print_seq_area: Print the card's sequence area verbatim. */
 void print_seq_area()
 {
     assert(areas_printed == NO_AREAS);
@@ -182,7 +187,7 @@ void print_seq_area()
     areas_printed |= SEQ_AREA;
 }
 
-/* print_indicator_area(): Print the indicator area in lowercase. */
+/* print_indicator_area(): Print the card's indicator area in lowercase. */
 void print_ind_area()
 {
     assert(areas_printed == SEQ_AREA);
@@ -192,7 +197,7 @@ void print_ind_area()
     areas_printed |= IND_AREA;
 }
 
-/* print_comment_line: Print the A and B margins verbatim. */
+/* print_comment_line: Print the card's A and B margins verbatim. */
 void print_comment_line()
 {
     assert(is_comment_line());
@@ -204,7 +209,7 @@ void print_comment_line()
     areas_printed |= A_MARGIN | B_MARGIN;
 }
 
-/* print_comment_par: Print the A + B margins as a comment paragraph.   */
+/* print_comment_par: Print the card's A + B margins as a comment paragraph. */
 void print_comment_par()
 {
     assert(is_comment_par());
@@ -222,7 +227,7 @@ void print_comment_par()
     areas_printed |= A_MARGIN | B_MARGIN;
 }
 
-/* print_code_line: Print the A + B margins with normal formatting. */
+/* print_code_line: Print the card's A + B margins with normal formatting. */
 void print_code_line()
 {
     assert(is_normal_line() || is_continuation_line() || is_debugging_line());
@@ -256,40 +261,56 @@ void print_code_line()
     areas_printed |= A_MARGIN | B_MARGIN;
 }
 
-/* print_comment_area: Print comment area verbatim until end of line or EOF. */
-/*                     Fixed 80-column line length is not enforced.          */
-void print_comment_area()
+/* echo_comment_area: Read and print verbatim from the comment area until end   */
+/*                    of line or EOF. Fixed 80-col line length is not enforced. */
+void echo_comment_area()
 {
     assert(areas_printed == SEQ_AREA | IND_AREA | A_MARGIN | B_MARGIN);
 
+    int ch;
+
     while ((ch = getchar()) != EOF) {
-        if (ch == '\r' || ch == '\n')
+        if (ch == '\r' || ch == '\n') {
+            ungetc(ch, stdin);
             break;
+        }
         putchar(ch);
     }
+    eof = (ch == EOF);
 
     areas_printed |= A_MARGIN | B_MARGIN;
 }
 
-/* print_code_line: Print linebreaks until next non-blank line.   */
-void print_linebreaks()
+/* echo_linebreaks: Read and print linebreaks until non-blank line or EOF. */
+void echo_linebreaks()
 {
-    assert(ch == '\r' || ch == '\n');
+    bool done = false;
+    char ch;
 
-    switch (ch) {
-        case '\r':
-            putchar(ch);
-            if ((ch = getchar()) == '\n')
-                putchar('\n');
-            else {
-                fprintf(stderr, "%s: bad linebreak (CR without LF)\n", program);
-                exit(CR_WITHOUT_LF);
-            }
-            ch = '\0';
-            break;
-        case '\n':
-            putchar(ch);
-            ch = '\0';
+    while (!done) {
+        switch (ch = getchar()) {
+            case '\r':
+                putchar(ch);
+                if ((ch = getchar()) == '\n')
+                    putchar('\n');
+                else {
+                    fprintf(stderr, "%s: bad input (CR without LF)\n", program);
+                    exit(CR_WITHOUT_LF);
+                }
+                break;
+            case '\n':
+                putchar(ch);
+                break;
+            case EOF:
+                eof = true;
+                done = true;
+                break;
+            default:
+                ungetc(ch, stdin);
+                done = true;
+                break;
+        }
+        if (done)
             break;
     }
 }
