@@ -35,12 +35,9 @@ int main(int argc, char *argv[])
     while (ch != EOF) {
         if (!get_card())
             continue; /* Card is empty. */
-
         print_card();
-
         if (has_comment_area)
             print_comment_area();
-
         print_linebreaks();
     }
 }
@@ -48,6 +45,7 @@ int main(int argc, char *argv[])
 int get_card()
 {
     int i;
+
     /* Reset the card. */
     for (i = 0; i < CARD_SIZE; ++i)
         if (card[i])
@@ -190,7 +188,9 @@ int ascii_strnicmp(const char *a, const char *b, size_t count)
 {
     int diff = 0;
 
-    while (!diff && *a && count--)
+    do {
         diff = (toupper(*a++) - toupper(*b++));
+    } while (!diff && *a && --count);
+
     return diff;
 }
