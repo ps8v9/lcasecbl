@@ -1,8 +1,18 @@
+#include <assert.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+enum areas {
+    NO_AREAS,
+    SEQ_AREA     =  1,
+    IND_AREA     =  2,
+    A_MARGIN     =  4,
+    B_MARGIN     =  8,
+    COMMENT_AREA = 16
+};
 
 enum contexts {
     CODE,
@@ -14,25 +24,30 @@ enum errors {
     CR_WITHOUT_LF = 1
 };
 
-const int sequence_area      =  0; /* start of sequence area */
-const int indicator_position =  6; /* start and end of indicator area */
-const int a_margin           =  7; /* start of A margin */
-const int comment_area       = 72; /* start of comment area */
+const int seq_area     =  0; /* start of sequence area */
+const int ind_area     =  6; /* start and end of indicator area */
+const int a_margin     =  7; /* start of A margin */
+const int comment_area = 72; /* start of comment area */
 
 /* The comment area is not stored in the card variable. Thus: */
 #define CARD_SIZE 73
 
-char *program;         /* argv[0] */
+const char* program;   /* argv[0] */
 char card[CARD_SIZE];  /* a null-terminated card from the program's deck */
 bool has_comment_area; /* does the current card have a comment area? */
 char ch;               /* the last character read */
+int areas_printed;     /* which areas have been printed from the card? */
 
 bool get_card();
-
 bool is_comment_line();
 bool is_comment_par();
+bool is_normal_line();
+bool is_debugging_line();
+bool is_continuation_line();
 
 void print_card();
+void print_seq_area();
+void print_ind_area();
 void print_comment_par();
 void print_comment_line();
 void print_code_line();
@@ -62,6 +77,7 @@ bool get_card()
         else
             break;
     has_comment_area = false;
+    areas_printed = NO_AREAS;
 
     i = 0;
     if (ch)
@@ -84,18 +100,15 @@ bool get_card()
 /* print_card: Print the current card. */
 void print_card()
 {
-    char indicator;
-
     /* Print the sequence area verbatim. */
-    if (card[sequence_area])
-        for (int i = sequence_area; i < indicator_position && card[i]; ++i)
-            putchar(card[i]);
+    if (card[seq_area])
+        print_seq_area();
     else
         return;
 
     /* Print the indicator area in lowercase. */
-    if (card[indicator_position])
-        putchar(tolower(card[indicator_position]));
+    if (card[ind_area])
+        print_ind_area();
     else
         return;
 
@@ -118,7 +131,7 @@ void print_card()
 /* is_comment_line: Is the card a comment line? */
 bool is_comment_line()
 {
-    char i = card[indicator_position];
+    char i = card[ind_area];
     return (i == '*' || i == '/' || i == '$');
 }
 
@@ -143,17 +156,62 @@ bool is_comment_par()
     return false;
 }
 
+/* is_normal_line: Is the card a normal line? */
+bool is_normal_line() {
+    return (card[ind_area] == ' ');
+}
+
+/* is_debugging_line: Is the card a debugging line? */
+bool is_debugging_line()
+{
+    return (card[ind_area] == '/');
+}
+
+/* is_continuation_line: Is the card a continuation line? */
+bool is_continuation_line()
+{
+    return (card[ind_area] == '-');
+}
+
+/* print_seq_area: Print the sequence area verbatim. */
+void print_seq_area()
+{
+    assert(areas_printed == NO_AREAS);
+
+    for (int i = seq_area; i < ind_area && card[i]; ++i)
+        putchar(card[i]);
+
+    areas_printed |= SEQ_AREA;
+}
+
+/* print_indicator_area(): Print the indicator area in lowercase. */
+void print_ind_area()
+{
+    assert(areas_printed == SEQ_AREA);
+
+    putchar(tolower(card[ind_area]));
+
+    areas_printed |= IND_AREA;
+}
+
 /* print_comment_line: Print the A and B margins verbatim. */
 void print_comment_line()
 {
+    assert(is_comment_line());
+    assert(areas_printed == SEQ_AREA | IND_AREA);
+
     for (int i = a_margin; i < comment_area && card[i]; ++i)
         putchar(card[i]);
+
+    areas_printed |= A_MARGIN | B_MARGIN;
 }
 
 /* print_comment_par: Print the A + B margins as a comment paragraph.   */
-/*                    Assumption: Columns 1-7 have already been printed. */
 void print_comment_par()
 {
+    assert(is_comment_par());
+    assert(areas_printed == SEQ_AREA | IND_AREA);
+
     int i;
 
     /* Print the paragraph name in lowercase. */
@@ -162,12 +220,16 @@ void print_comment_par()
 
     /* Print the rest of the line verbatim. */
     printf("%s", card + i);
+
+    areas_printed |= A_MARGIN | B_MARGIN;
 }
 
-/* print_code_line: Print the A + B margins with normal formatting.   */
-/*                  Assumption: Columns 1-7 have already been printed. */
+/* print_code_line: Print the A + B margins with normal formatting. */
 void print_code_line()
 {
+    assert(is_normal_line() || is_continuation_line() || is_debugging_line());
+    assert(areas_printed == SEQ_AREA | IND_AREA);
+
     char quote;
     enum contexts context = CODE;
 
@@ -192,24 +254,30 @@ void print_code_line()
                     context = CODE;
                 break;
         }
+
+    areas_printed |= A_MARGIN | B_MARGIN;
 }
 
-/* print_comment_area: Print all text verbatim through end of line or EOF. */
-/*                     Assumption: Columns 1-72 have already been printed. */
-/*                     Fixed 80-column line length is not enforced.        */
+/* print_comment_area: Print comment area verbatim until end of line or EOF. */
+/*                     Fixed 80-column line length is not enforced.          */
 void print_comment_area()
 {
+    assert(areas_printed == SEQ_AREA | IND_AREA | A_MARGIN | B_MARGIN);
+
     while ((ch = getchar()) != EOF) {
         if (ch == '\r' || ch == '\n')
             break;
         putchar(ch);
     }
+
+    areas_printed |= A_MARGIN | B_MARGIN;
 }
 
 /* print_code_line: Print linebreaks until next non-blank line.   */
-/*                  Assumption: Last character read was \r or \n. */
 void print_linebreaks()
 {
+    assert(ch == '\r' || ch == '\n');
+
     switch (ch) {
         case '\r':
             putchar(ch);
