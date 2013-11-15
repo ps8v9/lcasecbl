@@ -4,8 +4,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum contexts { CODE, LITERAL, PSEUDOTEXT };
-enum errors   { CR_WITHOUT_LF = 1 };
+enum contexts {
+    CODE,
+    LITERAL,
+    PSEUDOTEXT
+};
+
+enum errors {
+    CR_WITHOUT_LF = 1
+};
 
 const int sequence_area      =  0; /* start of sequence area */
 const int indicator_position =  6; /* start and end of indicator area */
@@ -16,15 +23,22 @@ const int comment_area       = 72; /* start of comment area */
 #define CARD_SIZE 73
 
 char *program;         /* argv[0] */
-char card[CARD_SIZE];  /* null-terminated card from the program's deck */
-bool has_comment_area; /* current card has a comment area */
-char ch;               /* last character read */
+char card[CARD_SIZE];  /* a null-terminated card from the program's deck */
+bool has_comment_area; /* does the current card have a comment area? */
+char ch;               /* the last character read */
 
-int  get_card();
+bool get_card();
+
+bool is_comment_line();
+bool is_comment_par();
+
 void print_card();
+void print_comment_par();
+void print_comment_line();
+void print_code_line();
 void print_comment_area();
 void print_linebreaks();
-bool print_comment_paragraph();
+
 int  ascii_strnicmp(const char *a, const char *b, size_t count);
 
 int main(int argc, char *argv[])
@@ -32,17 +46,12 @@ int main(int argc, char *argv[])
     program = argv[0];
     ch = '\0';
 
-    while (ch != EOF) {
-        if (!get_card())
-            continue; /* Card is empty. */
+    while (get_card())
         print_card();
-        if (has_comment_area)
-            print_comment_area();
-        print_linebreaks();
-    }
 }
 
-int get_card()
+/* get_card: Get next card from standard input. */
+bool get_card()
 {
     int i;
 
@@ -69,14 +78,13 @@ int get_card()
         }
     }
 
-    return i;
+    return (i > 0 || ch != EOF);
 }
 
+/* print_card: Print the current card. */
 void print_card()
 {
     char indicator;
-    char quote;
-    enum contexts context = CODE;
 
     /* Print the sequence area verbatim. */
     if (card[sequence_area])
@@ -86,47 +94,109 @@ void print_card()
         return;
 
     /* Print the indicator area in lowercase. */
-    if ((indicator = card[indicator_position]))
-        putchar(tolower(indicator));
+    if (card[indicator_position])
+        putchar(tolower(card[indicator_position]));
     else
         return;
 
-    if (indicator == '*' || indicator == '/' || indicator == '$') {
-        /* Comment line. Print the A and B margins verbatim. */
-        if (card[a_margin])
-            for (int i = a_margin; i < comment_area && card[i]; ++i)
-                putchar(card[i]);
-    } else {
-        /* Special handling for comment-entry paragraphs. */
-        if (print_comment_paragraph())
-            return;
+    if (card[a_margin])
+        if (is_comment_line())
+            print_comment_line();
+        else if (is_comment_par())
+            print_comment_par();
+        else
+            print_code_line();
+    else
+        return;
 
-        /* Print A + B margins in lowercase (except literals and pseudotext). */
-        if (card[a_margin])
-           for (int i = a_margin; i < comment_area && card[i]; ++i)
-               switch (context) {
-                   case CODE:
-                       putchar(tolower(card[i]));
-                       if (card[i] == '"' || card[i] == '\'') {
-                           context = LITERAL;
-                           quote = card[i];
-                       } else if (card[i - 1] == '=' && card[i] == '=')
-                           context = PSEUDOTEXT;
-                       break;
-                   case LITERAL:
-                       putchar(card[i]);
-                       if (card[i] == quote)
-                           context = CODE;
-                       break;
-                   case PSEUDOTEXT:
-                       putchar(card[i]);
-                       if (card[i] == '=' && card[i + 1] == '=')
-                           context = CODE;
-                       break;
-               }
-    }
+    if (has_comment_area)
+        print_comment_area();
+
+    print_linebreaks();
 }
 
+/* is_comment_line: Is the card a comment line? */
+bool is_comment_line()
+{
+    char i = card[indicator_position];
+    return (i == '*' || i == '/' || i == '$');
+}
+
+/* is_comment_par: Is the card a documentation-only paragraph? */
+bool is_comment_par()
+{
+    static const char* const par[] = {
+        "AUTHOR.",
+        "INSTALLATION.",
+        "DATE-WRITTEN.",
+        "DATE-COMPILED.",
+        "SECURITY.",
+        "REMARKS."
+    };
+    static const int len[] = { 7, 13, 13, 14, 9, 8 };
+    static const int size = sizeof par / sizeof(char*);
+
+    for (int i = 0; i < size; ++i)
+        if (strlen(card + a_margin) >= len[i])
+            if (ascii_strnicmp(par[i], card + a_margin, len[i]) == 0)
+                return true;
+    return false;
+}
+
+/* print_comment_line: Print the A and B margins verbatim. */
+void print_comment_line()
+{
+    for (int i = a_margin; i < comment_area && card[i]; ++i)
+        putchar(card[i]);
+}
+
+/* print_comment_par: Print the A + B margins as a comment paragraph.   */
+/*                    Assumption: Columns 1-7 have already been printed. */
+void print_comment_par()
+{
+    int i;
+
+    /* Print the paragraph name in lowercase. */
+    for (i = a_margin; card[i] != '.'; ++i)
+         putchar(tolower(card[i]));
+
+    /* Print the rest of the line verbatim. */
+    printf("%s", card + i);
+}
+
+/* print_code_line: Print the A + B margins with normal formatting.   */
+/*                  Assumption: Columns 1-7 have already been printed. */
+void print_code_line()
+{
+    char quote;
+    enum contexts context = CODE;
+
+    for (int i = a_margin; i < comment_area && card[i]; ++i)
+        switch (context) {
+            case CODE:
+                putchar(tolower(card[i]));
+                if (card[i] == '"' || card[i] == '\'') {
+                    context = LITERAL;
+                    quote = card[i];
+                } else if (card[i - 1] == '=' && card[i] == '=')
+                    context = PSEUDOTEXT;
+                break;
+            case LITERAL:
+                putchar(card[i]);
+                if (card[i] == quote)
+                    context = CODE;
+                break;
+            case PSEUDOTEXT:
+                putchar(card[i]);
+                if (card[i] == '=' && card[i + 1] == '=')
+                    context = CODE;
+                break;
+        }
+}
+
+/* print_comment_area: Print all text verbatim through end of line or EOF. */
+/*                     Assumption: Columns 1-72 have already been printed. */
+/*                     Fixed 80-column line length is not enforced.        */
 void print_comment_area()
 {
     while ((ch = getchar()) != EOF) {
@@ -136,6 +206,8 @@ void print_comment_area()
     }
 }
 
+/* print_code_line: Print linebreaks until next non-blank line.   */
+/*                  Assumption: Last character read was \r or \n. */
 void print_linebreaks()
 {
     switch (ch) {
@@ -154,33 +226,6 @@ void print_linebreaks()
             ch = '\0';
             break;
     }
-}
-
-bool print_comment_paragraph()
-{
-    static const char* const para[] = {
-        "AUTHOR.",
-        "INSTALLATION.",
-        "DATE-WRITTEN.",
-        "DATE-COMPILED.",
-        "SECURITY.",
-        "REMARKS."
-    };
-    static const int len[] = { 7, 13, 13, 14, 9, 8 };
-    static const int size = sizeof para / sizeof(char*);
-
-    for (int i = 0; i < size; ++i) {
-        if (strlen(card + a_margin) >= len[i])
-            if (ascii_strnicmp(para[i], card + a_margin, len[i]) == 0) {
-                /* Match found. Print the lowercase paragraph name. */
-                for (int j = 0; j < len[i]; ++j)
-                    putchar(tolower(para[i][j]));
-                /* Print the rest of the line verbatim. */
-                printf("%s", card + a_margin + len[i]);
-                return true;
-            }
-    }
-    return false;
 }
 
 /* ascii_strnicmp: Case-insensitive ASCII string comparison. */
