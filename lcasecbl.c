@@ -5,6 +5,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+struct result {
+    size_t bytes_read;
+    bool   end_of_line;
+    bool   eof;
+};
+
 enum areas {
     NO_AREAS,
     SEQ_AREA     =  1,
@@ -36,9 +42,8 @@ const char* program;   /* argv[0] */
 char card[CARD_SIZE];  /* a null-terminated card from the program's deck */
 int  areas_printed;    /* which areas have been printed from the card? */
 bool has_comment_area; /* does the current card have a comment area? */
-bool eof;              /* has EOF been reached on standard input? */
 
-int read_card();
+struct result read_card();
 
 bool is_comment_line();
 bool is_comment_par();
@@ -53,27 +58,41 @@ void print_comment_par();
 void print_comment_line();
 void print_code_line();
 
-void echo_comment_area();
-void echo_linebreaks();
+struct result echo_comment_area();
+struct result echo_linebreaks();
 
 int  ascii_strnicmp(const char *a, const char *b, size_t count);
 
 int main(int argc, char *argv[])
 {
     program = argv[0];
-    eof = false;
+    struct result r = { 0, false, false };
 
-    while (!eof) {
-        if (read_card())
+    while (true) {
+        r = read_card();
+        if (r.bytes_read)
             print_card();
-        if (!eof)
-            echo_linebreaks();
+        if (r.eof)
+            break;
+
+        if (! r.end_of_line) {
+            r = echo_comment_area();
+            if (r.eof)
+                break;
+        }
+
+        r = echo_linebreaks();
+        if (r.eof)
+            break;
     }
+
+    return 0;
 }
 
 /* read_card: Read next card from stdin, and return number of chars read. */
-int read_card()
+struct result read_card()
 {
+    struct result r = { 0, false, false };
     int ch;
     int i;
 
@@ -90,6 +109,7 @@ int read_card()
     /* Read each card position until comment area, linebreak, or EOF. */
     while ((ch = getchar()) != EOF) {
         if (ch == '\r' || ch == '\n') {
+            r.end_of_line = true;
             ungetc(ch, stdin);
             break;
         }
@@ -99,9 +119,10 @@ int read_card()
             break;
         }
     }
-    eof = (ch == EOF);
 
-    return i;
+    r.bytes_read = i;
+    r.eof = (ch == EOF);
+    return r;
 }
 
 /* print_card: Print the current card. */
@@ -201,7 +222,7 @@ void print_ind_area()
 void print_comment_line()
 {
     assert(is_comment_line());
-    assert(areas_printed == SEQ_AREA | IND_AREA);
+    assert(areas_printed == (SEQ_AREA | IND_AREA));
 
     for (int i = a_margin; i < comment_area && card[i]; ++i)
         putchar(card[i]);
@@ -213,7 +234,7 @@ void print_comment_line()
 void print_comment_par()
 {
     assert(is_comment_par());
-    assert(areas_printed == SEQ_AREA | IND_AREA);
+    assert(areas_printed == (SEQ_AREA | IND_AREA));
 
     int i;
 
@@ -231,7 +252,7 @@ void print_comment_par()
 void print_code_line()
 {
     assert(is_normal_line() || is_continuation_line() || is_debugging_line());
-    assert(areas_printed == SEQ_AREA | IND_AREA);
+    assert(areas_printed == (SEQ_AREA | IND_AREA));
 
     char quote;
     enum contexts context = CODE;
@@ -263,10 +284,11 @@ void print_code_line()
 
 /* echo_comment_area: Read and print verbatim from the comment area until end   */
 /*                    of line or EOF. Fixed 80-col line length is not enforced. */
-void echo_comment_area()
+struct result echo_comment_area()
 {
-    assert(areas_printed == SEQ_AREA | IND_AREA | A_MARGIN | B_MARGIN);
+    assert(areas_printed == (SEQ_AREA | IND_AREA | A_MARGIN | B_MARGIN));
 
+    struct result r = { 0, false, false };
     int ch;
 
     while ((ch = getchar()) != EOF) {
@@ -274,24 +296,30 @@ void echo_comment_area()
             ungetc(ch, stdin);
             break;
         }
+        ++r.bytes_read;
         putchar(ch);
     }
-    eof = (ch == EOF);
+    r.eof = (ch == EOF);
 
     areas_printed |= A_MARGIN | B_MARGIN;
+    return r;
 }
 
 /* echo_linebreaks: Read and print linebreaks until non-blank line or EOF. */
-void echo_linebreaks()
+struct result echo_linebreaks()
 {
-    bool done = false;
+    struct result r = { 0, false, false };
+    bool done;
     char ch;
 
-    while (!done) {
+    while (! done) {
         switch (ch = getchar()) {
             case '\r':
+                r.bytes_read++;
                 putchar(ch);
-                if ((ch = getchar()) == '\n')
+                if ((ch = getchar()) != EOF)
+                    r.bytes_read++;
+                if (ch == '\n')
                     putchar('\n');
                 else {
                     fprintf(stderr, "%s: bad input (CR without LF)\n", program);
@@ -299,10 +327,11 @@ void echo_linebreaks()
                 }
                 break;
             case '\n':
+                r.bytes_read++;
                 putchar(ch);
                 break;
             case EOF:
-                eof = true;
+                r.eof = true;
                 done = true;
                 break;
             default:
@@ -313,6 +342,8 @@ void echo_linebreaks()
         if (done)
             break;
     }
+
+    return r;
 }
 
 /* ascii_strnicmp: Case-insensitive ASCII string comparison. */
