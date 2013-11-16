@@ -77,18 +77,15 @@ int getopts(int argc, char *argv[])
     int err_code = 0;
     char opt;
 
-    opts.help = false;
-    opts.tolower = true;
-
     if (argc > 0 && argv[1][0] == '-')
         switch ((opt = argv[1][1])) {
             case 'h':
                 opts.help = true;
                 break;
             case 'l':
+                opts.tolower = true;
                 break;
             case 'L':
-                opts.tolower = false;
                 break;
             default:
                 fprintf(stderr, "%s: unknown option: -%c\n", argv[0], opt);
