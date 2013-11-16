@@ -78,7 +78,7 @@ int getopts(int argc, char *argv[])
     char opt;
 
     opts.help = false;
-    opts.tolower = false;
+    opts.tolower = true;
 
     if (argc > 0 && argv[1][0] == '-')
         switch ((opt = argv[1][1])) {
@@ -104,12 +104,7 @@ void read_card()
 {
     int i, ch;
 
-    /* Reset the card's data member. */
-    for (i = 0; i < CARD_SIZE; ++i)
-        if (card.data[i])
-            card.data[i] = '\0';
-        else
-            break;
+    memset(card.data, '\0', CARD_SIZE);
 
     /* Read each card position until comment area, linebreak, or EOF. */
     i = 0;
