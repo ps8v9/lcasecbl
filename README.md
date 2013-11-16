@@ -1,7 +1,7 @@
 lcasecbl
 ========
 
-C utility to format COBOL in lowercase.
+C99 utility to format COBOL in lowercase.
 
 The following are excluded from being converted to lowercase:
 
@@ -15,7 +15,7 @@ The following are excluded from being converted to lowercase:
 
 Everything else is converted to lowercase. This is not necessarily valid.
 
-ASSUMPTIONS
+Assumptions
 ===========
 
 The COBOL source code is assumed to be in ANSI format (a.k.a. reference format).
@@ -49,7 +49,7 @@ a slash (/), or a dollar sign ($).
 Lines may continue beyond the comment area, but anything past column 80 is
 considered to be a comment.
 
-CAVEATS
+Caveats
 =======
 
 Areas where I suspect that breakage may occur in at least some dialects of

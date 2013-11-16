@@ -1,5 +1,5 @@
 /*
- * lcasecbl.c : C99 utility for converting COBOL to lowercase.
+ * lcasecbl.c : C99 utility to format COBOL in lowercase
  *
  * AUTHOR  : Matthew J. Fisher
  * REPO    : https://github.com/ps8v9/lcasecbl
