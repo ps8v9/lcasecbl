@@ -1,3 +1,11 @@
+/*
+ * lcasecbl.c : C99 utility for converting COBOL to lowercase.
+ *
+ * AUTHOR  : Matthew J. Fisher
+ * REPO    : https://github.com/ps8v9/lcasecbl
+ * LICENSE : This is free and unencumbered software released into the public
+ *           domain. See the LICENSE file for further details.
+ */
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
