@@ -29,10 +29,14 @@ struct {
     bool is_comment_par;   /* Is it a comment paragraph? */
 } card;
 
-struct { bool tolower; } opts;
+struct {
+    bool help;
+    bool tolower;
+} opts;
 
 enum contexts { CODE, LITERAL, PSEUDOTEXT };
 
+int  getopts();
 void read_card();
 void set_properties(int cnt, bool eof);
 void print_card();
@@ -43,16 +47,19 @@ void print_comment_line();
 void print_code_line();
 void echo_comment_area();
 void echo_linebreaks();
-int  ps8_strnicmp(const char *a, const char *b, size_t count);
-int  ps8_getopt();
 char to_target_case(const char ch);
+int  ps8_strnicmp(const char *a, const char *b, size_t count);
 
 int main(int argc, char *argv[])
 {
-    int err_code = ps8_getopt(argc, argv);
+    int err_code = getopts(argc, argv);
+    if (err_code)
+        return err_code;
 
-    if (err_code != 0)
-        exit(err_code);
+    if (opts.help) {
+        fprintf(stderr, "usage: %s [-h] [-l] [-L]\n", argv[0]);
+        return 0;
+    }
 
     while (! card.eof) {
         read_card();
@@ -62,6 +69,34 @@ int main(int argc, char *argv[])
     }
 
     return 0;
+}
+
+/* getopts: Simple option processing. */
+int getopts(int argc, char *argv[])
+{
+    int err_code = 0;
+    char opt;
+
+    opts.help = false;
+    opts.tolower = false;
+
+    if (argc > 0 && argv[1][0] == '-')
+        switch ((opt = argv[1][1])) {
+            case 'h':
+                opts.help = true;
+                break;
+            case 'l':
+                break;
+            case 'L':
+                opts.tolower = false;
+                break;
+            default:
+                fprintf(stderr, "%s: unknown option: -%c\n", argv[0], opt);
+                err_code = 1;
+                break;
+        }
+
+    return err_code;
 }
 
 /* read_card: Read next card from stdin. */
@@ -250,6 +285,12 @@ void echo_linebreaks()
     }
 }
 
+/* to_target_case: Convert to lower or uppercase according to option setting. */
+char to_target_case(const char ch)
+{
+    return (opts.tolower) ? tolower(ch) : toupper(ch);
+}
+
 /* ps8_strnicmp: Case-insensitive string comparison. */
 int ps8_strnicmp(const char *a, const char *b, size_t count)
 {
@@ -260,39 +301,4 @@ int ps8_strnicmp(const char *a, const char *b, size_t count)
     } while (!diff && *a && --count);
 
     return diff;
-}
-
-/* ps8_getopt: Poor man's getopt. Supported options are -h to show the usage   */
-/*             statement, -l to convert to lowercase, and -L to convert to     */
-/*             uppercase. Options may start with - or /.                       */
-int ps8_getopt(int argc, char *argv[])
-{
-    int err_code = 0;
-
-    if (argc > 0 && (argv[1][0] == '-' || argv[1][0] == '/'))
-        switch (argv[1][1]) {
-            case 'l':
-                opts.tolower = true;
-                break;
-            case 'L':
-                opts.tolower = false;
-                break;
-            case 'h':
-                fprintf(stderr, "usage: %s %c[hlL]\n", argv[0], argv[1][0]);
-                err_code = 1;
-                break;
-            default:
-                fprintf(stderr, "%s: unknown option: %c%c\n", argv[0],
-                  argv[1][0], argv[1][1]);
-                err_code = 2;
-                break;
-        }
-
-    return err_code;
-}
-
-/* to_target_case: Convert to lower or uppercase according to option setting. */
-char to_target_case(const char ch)
-{
-    return (opts.tolower) ? tolower(ch) : toupper(ch);
 }
