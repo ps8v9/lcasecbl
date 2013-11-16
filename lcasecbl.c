@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -7,23 +6,19 @@
 
 /* These magic numbers will never change. Fixed format is fixed forever. */
 #define CARD_SIZE 73
-const int seq_area     =  0; /* start of sequence area          */
+const int seq_area     =  0; /* start of sequence area */
 const int ind_area     =  6; /* start and end of indicator area */
-const int a_margin     =  7; /* start of A margin               */
-const int comment_area = 72; /* start of comment area           */
+const int a_margin     =  7; /* start of A margin */
+const int comment_area = 72; /* start of comment area */
 
 /* Columns 73+ are not ignored. They're just not stored in this struct. */
 struct card_format {
-    char data[CARD_SIZE];      /* a null-terminated card from the deck  */
-    bool eof;                  /* Did we reach EOF before next card?    */
-    bool has_data;             /* Does the card have data in cols 1-72? */
-    bool has_comment_area;     /* Does it have a comment area?          */
-    bool is_normal_line;       /* Is the card a normal line?            */
-    bool is_continuation_line; /*         ... a continuation line?      */
-    bool is_comment_line;      /*         ... a comment line?           */
-    bool is_debugging_line;    /*         ... a debugging line?         */
-    bool is_comment_par;       /*         ... a comment paragraph?      */
-    int  areas_printed;        /* Which of its areas have been printed? */
+    char data[CARD_SIZE];  /* a null-terminated card from the deck  */
+    bool eof;              /* Did we reach EOF before next card? */
+    bool has_data;         /* Does the card have data in cols 1-72? */
+    bool has_comment_area; /* Does it have a comment area? */
+    bool is_comment_line;  /* Is the card a comment line? */
+    bool is_comment_par;   /* Is it a comment paragraph? */
 };
 
 enum areas {
@@ -127,18 +122,13 @@ void set_properties(int cnt, bool eof)
     card.has_comment_area = (cnt == comment_area);
 
     char ind = card.data[ind_area];
-    card.is_normal_line = (cnt> 0 && ind==' ');
-    card.is_continuation_line = (cnt>0 && ind=='-');
     card.is_comment_line = (cnt>0 && (ind=='*' || ind=='/' || ind=='$'));
-    card.is_debugging_line = (cnt>0 && ind=='/');
 
     card.is_comment_par = false; /* default */
     for (int i = 0; i < size; ++i)
         if (strlen(card.data + a_margin) >= len[i])
             if (ps8_strnicmp(par[i], card.data + a_margin, len[i]) == 0)
                 card.is_comment_par = true;
-
-    card.areas_printed = NO_AREAS;
 }
 
 /* print_card: Print the current card. */
@@ -171,36 +161,26 @@ void print_card()
 /* print_seq_area: Print the card's sequence area verbatim. */
 void print_seq_area()
 {
-    assert(card.areas_printed == NO_AREAS);
     for (int i = seq_area; i < ind_area && card.data[i]; ++i)
         putchar(card.data[i]);
-    card.areas_printed |= SEQ_AREA;
 }
 
 /* print_indicator_area(): Print the card's indicator area in lowercase. */
 void print_ind_area()
 {
-    assert(card.areas_printed == SEQ_AREA);
     putchar(tolower(card.data[ind_area]));
-    card.areas_printed |= IND_AREA;
 }
 
 /* print_comment_line: Print the card's A and B margins verbatim. */
 void print_comment_line()
 {
-    assert(card.is_comment_line);
-    assert(card.areas_printed == (SEQ_AREA | IND_AREA));
     for (int i = a_margin; i < comment_area && card.data[i]; ++i)
         putchar(card.data[i]);
-    card.areas_printed |= A_MARGIN | B_MARGIN;
 }
 
 /* print_comment_par: Print the card's A + B margins as a comment paragraph. */
 void print_comment_par()
 {
-    assert(card.is_comment_par);
-    assert(card.areas_printed == (SEQ_AREA | IND_AREA));
-
     int i;
 
     /* Print the paragraph name in lowercase. */
@@ -209,18 +189,11 @@ void print_comment_par()
 
     /* Print the rest of the line verbatim. */
     printf("%s", card.data + i);
-
-    card.areas_printed |= A_MARGIN | B_MARGIN;
 }
 
 /* print_code_line: Print the card's A + B margins with normal formatting. */
 void print_code_line()
 {
-    assert(card.is_normal_line       ||
-           card.is_continuation_line ||
-           card.is_debugging_line);
-    assert(card.areas_printed == (SEQ_AREA | IND_AREA));
-
     char quote;
     enum contexts context = CODE;
 
@@ -245,16 +218,12 @@ void print_code_line()
                     context = CODE;
                 break;
         }
-
-    card.areas_printed |= A_MARGIN | B_MARGIN;
 }
 
 /* echo_comment_area: Read and print verbatim from the comment area until end   */
 /*                    of line or EOF. Fixed 80-col line length is not enforced. */
 void echo_comment_area()
 {
-    assert(card.areas_printed == (SEQ_AREA | IND_AREA | A_MARGIN | B_MARGIN));
-
     int ch;
 
     while ((ch = getchar()) != EOF) {
@@ -266,7 +235,6 @@ void echo_comment_area()
     }
 
     card.eof = (ch == EOF);
-    card.areas_printed |= A_MARGIN | B_MARGIN;
 }
 
 /* echo_linebreaks: Read and print linebreaks until non-blank line or EOF. */
