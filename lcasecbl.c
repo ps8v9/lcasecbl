@@ -180,8 +180,8 @@ void print_code_line()
             case CODE:
                 putchar(tolower(card.data[i]));
                 if (card.data[i] == '"' || card.data[i] == '\'') {
-                    context = LITERAL;
                     quote = card.data[i];
+                    context = LITERAL;
                 } else if (card.data[i - 1] == '=' && card.data[i] == '=')
                     context = PSEUDOTEXT;
                 break;
@@ -218,7 +218,7 @@ void echo_comment_area()
 /* echo_linebreaks: Read and print linebreaks until non-blank line or EOF. */
 void echo_linebreaks()
 {
-    bool done;
+    bool done = false;
     char ch;
 
     while (! done) {
