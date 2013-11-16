@@ -118,7 +118,7 @@ void set_properties(int cnt, bool eof)
                 card.is_comment_par = true;
 }
 
-/* print_card: Print the current card. */
+/* print_card: Print the card. */
 void print_card()
 {
     if (card.data[seq_area])
@@ -170,7 +170,7 @@ void print_comment_par()
 {
     int i;
 
-    /* Print the paragraph name in lowercase. */
+    /* Print the paragraph name in target case. */
     for (i = a_margin; card.data[i] != '.'; ++i)
          putchar(to_target_case(card.data[i]));
 
