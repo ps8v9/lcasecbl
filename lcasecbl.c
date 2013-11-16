@@ -150,28 +150,17 @@ void set_properties(int cnt, bool eof)
 /* print_card: Print the card. */
 void print_card()
 {
-    if (card.data[seq_area])
-        print_seq_area();
-    else
-        return;
+    print_seq_area();
+    print_ind_area();
 
-    if (card.data[ind_area])
-        print_ind_area();
+    if (card.is_comment_line)
+        print_comment_line();
+    else if (card.is_comment_par)
+        print_comment_par();
     else
-        return;
+        print_code_line();
 
-    if (card.data[a_margin])
-        if (card.is_comment_line)
-            print_comment_line();
-        else if (card.is_comment_par)
-            print_comment_par();
-        else
-            print_code_line();
-    else
-        return;
-
-    if (card.has_comment_area)
-        echo_comment_area();
+    echo_comment_area();
 }
 
 /* print_seq_area: Print the card's sequence area verbatim. */
@@ -184,7 +173,8 @@ void print_seq_area()
 /* print_indicator_area(): Print the card's indicator area in target case. */
 void print_ind_area()
 {
-    putchar(to_target_case(card.data[ind_area]));
+    if (card.data[ind_area])
+        putchar(to_target_case(card.data[ind_area]));
 }
 
 /* print_comment_line: Print the card's A and B margins verbatim. */
@@ -200,7 +190,7 @@ void print_comment_par()
     int i;
 
     /* Print the paragraph name in target case. */
-    for (i = a_margin; card.data[i] != '.'; ++i)
+    for (i = a_margin; card.data[i] != '.' && card.data[i]; ++i)
          putchar(to_target_case(card.data[i]));
 
     /* Print the rest of the line verbatim. */
@@ -242,15 +232,16 @@ void echo_comment_area()
 {
     int ch;
 
-    while ((ch = getchar()) != EOF) {
-        if (ch == '\r' || ch == '\n') {
-            ungetc(ch, stdin);
-            break;
+    if (card.has_comment_area) {
+        while ((ch = getchar()) != EOF) {
+            if (ch == '\r' || ch == '\n') {
+                ungetc(ch, stdin);
+                break;
+            }
+            putchar(ch);
         }
-        putchar(ch);
+        card.eof = (ch == EOF);
     }
-
-    card.eof = (ch == EOF);
 }
 
 /* echo_linebreaks: Read and print linebreaks until non-blank line or EOF. */
