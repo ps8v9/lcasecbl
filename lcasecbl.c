@@ -20,38 +20,39 @@ const int a_margin     =  7; /* start of A margin */
 const int comment_area = 72; /* start of comment area */
 
 /* Columns > 72 are not ignored. They're just not stored in this struct. */
-struct card_format {
+struct {
     char data[CARD_SIZE];  /* a null-terminated card from the deck  */
     bool eof;              /* Did we reach EOF before next card? */
     bool has_data;         /* Does the card have data in cols 1-72? */
     bool has_comment_area; /* Does it have a comment area? */
     bool is_comment_line;  /* Is the card a comment line? */
     bool is_comment_par;   /* Is it a comment paragraph? */
-};
+} card;
+
+struct { bool tolower; } opts;
 
 enum contexts { CODE, LITERAL, PSEUDOTEXT };
 
 void read_card();
 void set_properties(int cnt, bool eof);
-
 void print_card();
 void print_seq_area();
 void print_ind_area();
 void print_comment_par();
 void print_comment_line();
 void print_code_line();
-
 void echo_comment_area();
 void echo_linebreaks();
-
-int ps8_strnicmp(const char *a, const char *b, size_t count);
-
-const char* program;
-struct card_format card;
+int  ps8_strnicmp(const char *a, const char *b, size_t count);
+int  ps8_getopt();
+char to_target_case(const char ch);
 
 int main(int argc, char *argv[])
 {
-    program = argv[0];
+    int err_code = ps8_getopt(argc, argv);
+
+    if (err_code != 0)
+        exit(err_code);
 
     while (! card.eof) {
         read_card();
@@ -151,10 +152,10 @@ void print_seq_area()
         putchar(card.data[i]);
 }
 
-/* print_indicator_area(): Print the card's indicator area in lowercase. */
+/* print_indicator_area(): Print the card's indicator area in target case. */
 void print_ind_area()
 {
-    putchar(tolower(card.data[ind_area]));
+    putchar(to_target_case(card.data[ind_area]));
 }
 
 /* print_comment_line: Print the card's A and B margins verbatim. */
@@ -171,7 +172,7 @@ void print_comment_par()
 
     /* Print the paragraph name in lowercase. */
     for (i = a_margin; card.data[i] != '.'; ++i)
-         putchar(tolower(card.data[i]));
+         putchar(to_target_case(card.data[i]));
 
     /* Print the rest of the line verbatim. */
     printf("%s", card.data + i);
@@ -186,7 +187,7 @@ void print_code_line()
     for (int i = a_margin; i < comment_area && card.data[i]; ++i)
         switch (context) {
             case CODE:
-                putchar(tolower(card.data[i]));
+                putchar(to_target_case(card.data[i]));
                 if (card.data[i] == '"' || card.data[i] == '\'') {
                     quote = card.data[i];
                     context = LITERAL;
@@ -259,4 +260,39 @@ int ps8_strnicmp(const char *a, const char *b, size_t count)
     } while (!diff && *a && --count);
 
     return diff;
+}
+
+/* ps8_getopt: Poor man's getopt. Supported options are -h to show the usage   */
+/*             statement, -l to convert to lowercase, and -L to convert to     */
+/*             uppercase. Options may start with - or /.                       */
+int ps8_getopt(int argc, char *argv[])
+{
+    int err_code = 0;
+
+    if (argc > 0 && (argv[1][0] == '-' || argv[1][0] == '/'))
+        switch (argv[1][1]) {
+            case 'l':
+                opts.tolower = true;
+                break;
+            case 'L':
+                opts.tolower = false;
+                break;
+            case 'h':
+                fprintf(stderr, "usage: %s %c[hlL]\n", argv[0], argv[1][0]);
+                err_code = 1;
+                break;
+            default:
+                fprintf(stderr, "%s: unknown option: %c%c\n", argv[0],
+                  argv[1][0], argv[1][1]);
+                err_code = 2;
+                break;
+        }
+
+    return err_code;
+}
+
+/* to_target_case: Convert to lower or uppercase according to option setting. */
+char to_target_case(const char ch)
+{
+    return (opts.tolower) ? tolower(ch) : toupper(ch);
 }
