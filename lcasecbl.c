@@ -7,18 +7,23 @@
 
 /* These magic numbers will never change. Fixed format is fixed forever. */
 #define CARD_SIZE 73
-const int seq_area     =  0; /* start of sequence area */
+const int seq_area     =  0; /* start of sequence area          */
 const int ind_area     =  6; /* start and end of indicator area */
-const int a_margin     =  7; /* start of A margin */
-const int comment_area = 72; /* start of comment area */
+const int a_margin     =  7; /* start of A margin               */
+const int comment_area = 72; /* start of comment area           */
 
 /* Columns 73+ are not ignored. They're just not stored in this struct. */
 struct card_format {
-    char data[CARD_SIZE];  /* a null-terminated card from the program's deck */
-    bool eof;              /* did we reach eof before next card? */
-    bool is_blank;         /* is the card blank? */
-    bool has_comment_area; /* does the card have a comment area? */
-    int  areas_printed;    /* which areas have been printed from the card? */
+    char data[CARD_SIZE];      /* a null-terminated card from the deck  */
+    bool eof;                  /* Did we reach EOF before next card?    */
+    bool has_data;             /* Does the card have data in cols 1-72? */
+    bool has_comment_area;     /* Does it have a comment area?          */
+    bool is_normal_line;       /* Is the card a normal line?            */
+    bool is_continuation_line; /*         ... a continuation line?      */
+    bool is_comment_line;      /*         ... a comment line?           */
+    bool is_debugging_line;    /*         ... a debugging line?         */
+    bool is_comment_par;       /*         ... a comment paragraph?      */
+    int  areas_printed;        /* Which of its areas have been printed? */
 };
 
 enum areas {
@@ -41,12 +46,7 @@ enum errors {
 };
 
 void read_card();
-
-bool is_comment_line();
-bool is_comment_par();
-bool is_normal_line();
-bool is_continuation_line();
-bool is_debugging_line();
+void set_properties(int cnt, bool eof);
 
 void print_card();
 void print_seq_area();
@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 
     while (! card.eof) {
         read_card();
-        if (! card.is_blank)
+        if (card.has_data)
             print_card();
         if (card.has_comment_area)
             echo_comment_area();
@@ -82,21 +82,18 @@ int main(int argc, char *argv[])
 /* read_card: Read next card from stdin. */
 void read_card()
 {
-    int ch;
     int i;
+    int ch;
 
-    /* Reset the card. */
+    /* Reset the card's data member. */
     for (i = 0; i < CARD_SIZE; ++i)
         if (card.data[i])
             card.data[i] = '\0';
         else
             break;
-    card.is_blank = true;
-    card.has_comment_area = false;
-    card.areas_printed = NO_AREAS;
-    i = 0;
 
     /* Read each card position until comment area, linebreak, or EOF. */
+    i = 0;
     while ((ch = getchar()) != EOF) {
         if (ch == '\r' || ch == '\n') {
             ungetc(ch, stdin);
@@ -104,13 +101,44 @@ void read_card()
         }
         card.data[i++] = ch;
         if (i == comment_area) {
-            card.has_comment_area = true;
             break;
         }
     }
 
-    card.is_blank = (i == 0);
-    card.eof = (ch == EOF);
+    set_properties(i, (ch == EOF));
+}
+
+/* set_properties: Set the card's properties. */
+void set_properties(int cnt, bool eof)
+{
+    static const char* const par[] = {
+        "AUTHOR.",
+        "INSTALLATION.",
+        "DATE-WRITTEN.",
+        "DATE-COMPILED.",
+        "SECURITY.",
+        "REMARKS."
+    };
+    static const int len[] = { 7, 13, 13, 14, 9, 8 };
+    static const int size = sizeof par / sizeof(char*);
+
+    card.eof = eof;
+    card.has_data = (cnt > 0);
+    card.has_comment_area = (cnt == comment_area);
+
+    char ind = card.data[ind_area];
+    card.is_normal_line = (cnt> 0 && ind==' ');
+    card.is_continuation_line = (cnt>0 && ind=='-');
+    card.is_comment_line = (cnt>0 && (ind=='*' || ind=='/' || ind=='$'));
+    card.is_debugging_line = (cnt>0 && ind=='/');
+
+    card.is_comment_par = false; /* default */
+    for (int i = 0; i < size; ++i)
+        if (strlen(card.data + a_margin) >= len[i])
+            if (ps8_strnicmp(par[i], card.data + a_margin, len[i]) == 0)
+                card.is_comment_par = true;
+
+    card.areas_printed = NO_AREAS;
 }
 
 /* print_card: Print the current card. */
@@ -127,9 +155,9 @@ void print_card()
         return;
 
     if (card.data[a_margin])
-        if (is_comment_line())
+        if (card.is_comment_line)
             print_comment_line();
-        else if (is_comment_par())
+        else if (card.is_comment_par)
             print_comment_par();
         else
             print_code_line();
@@ -138,51 +166,6 @@ void print_card()
 
     if (card.has_comment_area)
         echo_comment_area();
-}
-
-/* is_comment_line: Is the card a comment line? */
-bool is_comment_line()
-{
-    char ind = card.data[ind_area];
-    return (ind == '*' || ind == '/' || ind == '$');
-}
-
-/* is_comment_par: Is the card a documentation-only paragraph? */
-bool is_comment_par()
-{
-    static const char* const par[] = {
-        "AUTHOR.",
-        "INSTALLATION.",
-        "DATE-WRITTEN.",
-        "DATE-COMPILED.",
-        "SECURITY.",
-        "REMARKS."
-    };
-    static const int len[] = { 7, 13, 13, 14, 9, 8 };
-    static const int size = sizeof par / sizeof(char*);
-
-    for (int i = 0; i < size; ++i)
-        if (strlen(card.data + a_margin) >= len[i])
-            if (ps8_strnicmp(par[i], card.data + a_margin, len[i]) == 0)
-                return true;
-    return false;
-}
-
-/* is_normal_line: Is the card a normal line? */
-bool is_normal_line() {
-    return (card.data[ind_area] == ' ');
-}
-
-/* is_debugging_line: Is the card a debugging line? */
-bool is_debugging_line()
-{
-    return (card.data[ind_area] == '/');
-}
-
-/* is_continuation_line: Is the card a continuation line? */
-bool is_continuation_line()
-{
-    return (card.data[ind_area] == '-');
 }
 
 /* print_seq_area: Print the card's sequence area verbatim. */
@@ -205,7 +188,7 @@ void print_ind_area()
 /* print_comment_line: Print the card's A and B margins verbatim. */
 void print_comment_line()
 {
-    assert(is_comment_line());
+    assert(card.is_comment_line);
     assert(card.areas_printed == (SEQ_AREA | IND_AREA));
     for (int i = a_margin; i < comment_area && card.data[i]; ++i)
         putchar(card.data[i]);
@@ -215,7 +198,7 @@ void print_comment_line()
 /* print_comment_par: Print the card's A + B margins as a comment paragraph. */
 void print_comment_par()
 {
-    assert(is_comment_par());
+    assert(card.is_comment_par);
     assert(card.areas_printed == (SEQ_AREA | IND_AREA));
 
     int i;
@@ -233,7 +216,9 @@ void print_comment_par()
 /* print_code_line: Print the card's A + B margins with normal formatting. */
 void print_code_line()
 {
-    assert(is_normal_line() || is_continuation_line() || is_debugging_line());
+    assert(card.is_normal_line       ||
+           card.is_continuation_line ||
+           card.is_debugging_line);
     assert(card.areas_printed == (SEQ_AREA | IND_AREA));
 
     char quote;
