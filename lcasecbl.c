@@ -47,10 +47,11 @@ int main(int argc, char *argv[])
 
     while (! card.eof) {
         read_card();
-        if (card.has_data)
+        if (card.has_data) {
             print_card();
-        if (card.has_comment_area)
-            echo_comment_area();
+            if (card.has_comment_area)
+                echo_comment_area();
+        }
         echo_linebreaks();
     }
 
