@@ -77,15 +77,17 @@ int getopts(int argc, char *argv[])
     int err_code = 0;
     char opt;
 
+    opts.tolower = true;
+
     if (argc > 0 && argv[1][0] == '-')
         switch ((opt = argv[1][1])) {
             case 'h':
                 opts.help = true;
                 break;
             case 'l':
-                opts.tolower = true;
                 break;
             case 'L':
+                opts.tolower = false;
                 break;
             default:
                 fprintf(stderr, "%s: unknown option: -%c\n", argv[0], opt);
@@ -234,8 +236,8 @@ void print_code_line()
         }
 }
 
-/* echo_comment_area: Read and print verbatim from the comment area until end   */
-/*                    of line or EOF. Fixed 80-col line length is not enforced. */
+/* echo_comment_area: Read and print verbatim from the comment area until end */
+/*                    of line or EOF. Fixed line length is not enforced.      */
 void echo_comment_area()
 {
     int ch;
@@ -287,10 +289,8 @@ char to_target_case(const char ch)
 int ps8_strnicmp(const char *a, const char *b, size_t count)
 {
     int diff = 0;
-
     do {
         diff = (toupper(*a++) - toupper(*b++));
     } while (!diff && *a && --count);
-
     return diff;
 }
