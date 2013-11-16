@@ -22,7 +22,6 @@ struct card_format {
 };
 
 enum contexts { CODE, LITERAL, PSEUDOTEXT };
-enum errors   { CR_WITHOUT_LF = 1 };
 
 void read_card();
 void set_properties(int cnt, bool eof);
@@ -61,8 +60,7 @@ int main(int argc, char *argv[])
 /* read_card: Read next card from stdin. */
 void read_card()
 {
-    int i;
-    int ch;
+    int i, ch;
 
     /* Reset the card's data member. */
     for (i = 0; i < CARD_SIZE; ++i)
@@ -79,9 +77,8 @@ void read_card()
             break;
         }
         card.data[i++] = ch;
-        if (i == comment_area) {
+        if (i == comment_area)
             break;
-        }
     }
 
     set_properties(i, (ch == EOF));
@@ -101,13 +98,11 @@ void set_properties(int cnt, bool eof)
     static const int len[] = { 7, 13, 13, 14, 9, 8 };
     static const int size = sizeof par / sizeof(char*);
 
+    char ind = card.data[ind_area];
     card.eof = eof;
     card.has_data = (cnt > 0);
     card.has_comment_area = (cnt == comment_area);
-
-    char ind = card.data[ind_area];
     card.is_comment_line = (cnt>0 && (ind=='*' || ind=='/' || ind=='$'));
-
     card.is_comment_par = false; /* default */
     for (int i = 0; i < size; ++i)
         if (strlen(card.data + a_margin) >= len[i])
@@ -198,7 +193,7 @@ void print_code_line()
                 break;
             case PSEUDOTEXT:
                 putchar(card.data[i]);
-                if (card.data[i] == '=' && card.data[i + 1] == '=')
+                if (card.data[i - 1] == '=' && card.data[i] == '=')
                     context = CODE;
                 break;
         }
@@ -230,14 +225,6 @@ void echo_linebreaks()
     while (! done) {
         switch (ch = getchar()) {
             case '\r':
-                putchar(ch);
-                if ((ch = getchar()) == '\n')
-                    putchar('\n');
-                else {
-                    fprintf(stderr, "%s: bad input (CR without LF)\n", program);
-                    exit(CR_WITHOUT_LF);
-                }
-                break;
             case '\n':
                 putchar(ch);
                 break;
