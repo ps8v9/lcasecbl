@@ -11,7 +11,7 @@ const int ind_area     =  6; /* start and end of indicator area */
 const int a_margin     =  7; /* start of A margin */
 const int comment_area = 72; /* start of comment area */
 
-/* Columns 73+ are not ignored. They're just not stored in this struct. */
+/* Columns > 72 are not ignored. They're just not stored in this struct. */
 struct card_format {
     char data[CARD_SIZE];  /* a null-terminated card from the deck  */
     bool eof;              /* Did we reach EOF before next card? */
