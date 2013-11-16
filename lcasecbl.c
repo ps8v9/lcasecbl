@@ -101,10 +101,11 @@ void set_properties(int cnt, bool eof)
     card.has_data = (cnt > 0);
     card.has_comment_area = (cnt == comment_area);
     card.is_comment_line = (cnt>0 && (ind=='*' || ind=='/' || ind=='$'));
+
     card.is_comment_par = false; /* default */
     for (int i = 0; i < size; ++i)
         if (strlen(card.data + a_margin) >= len[i])
-            if (ps8_strnicmp(par[i], card.data + a_margin, len[i]) == 0)
+            if (ps8_strnicmp(card.data + a_margin, par[i], len[i]) == 0)
                 card.is_comment_par = true;
 }
 
