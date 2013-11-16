@@ -95,8 +95,8 @@ void set_properties(int cnt, bool eof)
     };
     static const int len[] = { 7, 13, 13, 14, 9, 8 };
     static const int size = sizeof par / sizeof(char*);
+    const char ind = card.data[ind_area];
 
-    char ind = card.data[ind_area];
     card.eof = eof;
     card.has_data = (cnt > 0);
     card.has_comment_area = (cnt == comment_area);
