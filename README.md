@@ -1,9 +1,9 @@
 lcasecbl
 ========
 
-C99 utility to format COBOL in lowercase.
+C99 utility to convert COBOL to lowercase or uppercase.
 
-The following are excluded from being converted to lowercase:
+The following are excluded from being converted to the target case:
 
     comment lines
     sequence area  (columns 1-6)
@@ -13,7 +13,16 @@ The following are excluded from being converted to lowercase:
     hexadecimal literals
     pseudo-text
 
-Everything else is converted to lowercase. This is not necessarily valid.
+Everything else is converted to the target case. This is not necessarily valid.
+
+Options
+===========
+
+A few options are supported. Options may start with either a hyphen (-) or a slash (/).
+
+    -h  Help.       Show the usage statement.
+    -l  Lowercase.  Convert code to lowercase.
+    -L  Uppercase.  Convert code to the opposite of lowercase.
 
 Assumptions
 ===========
@@ -56,3 +65,4 @@ Areas where I suspect that breakage may occur in at least some dialects of
 COBOL are:
 
     case-sensitive picture clauses
+    space-delimited literals
