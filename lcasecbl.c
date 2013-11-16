@@ -15,14 +15,10 @@ const int comment_area = 72; /* start of comment area */
 /* Columns 73+ are not ignored. They're just not stored in this struct. */
 struct card_format {
     char data[CARD_SIZE];  /* a null-terminated card from the program's deck */
+    bool eof;              /* did we reach eof before next card? */
     bool is_blank;         /* is the card blank? */
     bool has_comment_area; /* does the card have a comment area? */
     int  areas_printed;    /* which areas have been printed from the card? */
-};
-
-struct result {
-    bool end_of_line;
-    bool eof;
 };
 
 enum areas {
@@ -44,7 +40,7 @@ enum errors {
     CR_WITHOUT_LF = 1
 };
 
-struct result read_card();
+void read_card();
 
 bool is_comment_line();
 bool is_comment_par();
@@ -59,8 +55,8 @@ void print_comment_par();
 void print_comment_line();
 void print_code_line();
 
-struct result echo_comment_area();
-struct result echo_linebreaks();
+void echo_comment_area();
+void echo_linebreaks();
 
 int ps8_strnicmp(const char *a, const char *b, size_t count);
 
@@ -70,33 +66,22 @@ struct card_format card;
 int main(int argc, char *argv[])
 {
     program = argv[0];
-    struct result r = { false, false };
 
-    while (true) {
-        r = read_card();
+    while (! card.eof) {
+        read_card();
         if (! card.is_blank)
             print_card();
-        if (r.eof)
-            break;
-
-        if (! r.end_of_line) {
-            r = echo_comment_area();
-            if (r.eof)
-                break;
-        }
-
-        r = echo_linebreaks();
-        if (r.eof)
-            break;
+        if (card.has_comment_area)
+            echo_comment_area();
+        echo_linebreaks();
     }
 
     return 0;
 }
 
 /* read_card: Read next card from stdin. */
-struct result read_card()
+void read_card()
 {
-    struct result r = { false, false };
     int ch;
     int i;
 
@@ -114,7 +99,6 @@ struct result read_card()
     /* Read each card position until comment area, linebreak, or EOF. */
     while ((ch = getchar()) != EOF) {
         if (ch == '\r' || ch == '\n') {
-            r.end_of_line = true;
             ungetc(ch, stdin);
             break;
         }
@@ -126,9 +110,7 @@ struct result read_card()
     }
 
     card.is_blank = (i == 0);
-    r.eof = (ch == EOF);
-
-    return r;
+    card.eof = (ch == EOF);
 }
 
 /* print_card: Print the current card. */
@@ -284,11 +266,10 @@ void print_code_line()
 
 /* echo_comment_area: Read and print verbatim from the comment area until end   */
 /*                    of line or EOF. Fixed 80-col line length is not enforced. */
-struct result echo_comment_area()
+void echo_comment_area()
 {
     assert(card.areas_printed == (SEQ_AREA | IND_AREA | A_MARGIN | B_MARGIN));
 
-    struct result r = { false, false };
     int ch;
 
     while ((ch = getchar()) != EOF) {
@@ -299,16 +280,13 @@ struct result echo_comment_area()
         putchar(ch);
     }
 
-    r.eof = (ch == EOF);
+    card.eof = (ch == EOF);
     card.areas_printed |= A_MARGIN | B_MARGIN;
-
-    return r;
 }
 
 /* echo_linebreaks: Read and print linebreaks until non-blank line or EOF. */
-struct result echo_linebreaks()
+void echo_linebreaks()
 {
-    struct result r = { false, false };
     bool done;
     char ch;
 
@@ -327,7 +305,7 @@ struct result echo_linebreaks()
                 putchar(ch);
                 break;
             case EOF:
-                r.eof = true;
+                card.eof = true;
                 done = true;
                 break;
             default:
@@ -338,8 +316,6 @@ struct result echo_linebreaks()
         if (done)
             break;
     }
-
-    return r;
 }
 
 /* ps8_strnicmp: Case-insensitive string comparison. */
