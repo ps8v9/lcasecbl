@@ -21,24 +21,8 @@ struct card_format {
     bool is_comment_par;   /* Is it a comment paragraph? */
 };
 
-enum areas {
-    NO_AREAS,
-    SEQ_AREA     =  1,
-    IND_AREA     =  2,
-    A_MARGIN     =  4,
-    B_MARGIN     =  8,
-    COMMENT_AREA = 16
-};
-
-enum contexts {
-    CODE,
-    LITERAL,
-    PSEUDOTEXT
-};
-
-enum errors {
-    CR_WITHOUT_LF = 1
-};
+enum contexts { CODE, LITERAL, PSEUDOTEXT };
+enum errors   { CR_WITHOUT_LF = 1 };
 
 void read_card();
 void set_properties(int cnt, bool eof);
