@@ -82,7 +82,7 @@ void read_card()
             ungetc(ch, stdin);
             break;
         }
-        card.data[i++] = ch;
+        card.data[i++] = (char)ch;
         if (i == comment_area)
             break;
     }
@@ -226,8 +226,8 @@ void echo_comment_area()
 /* echo_linebreaks: Read and print linebreaks until non-blank line or EOF. */
 void echo_linebreaks()
 {
+    int  ch;
     bool done = false;
-    char ch;
 
     while (! done) {
         switch (ch = getchar()) {
