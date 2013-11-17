@@ -38,7 +38,7 @@ enum contexts { CODE, LITERAL, PSEUDOTEXT };
 
 int  getopts();
 void read_card();
-void set_properties(int cnt, bool eof);
+void set_properties(int count, bool eof);
 void print_card();
 void print_seq_area();
 void print_ind_area();
@@ -79,7 +79,7 @@ int getopts(int argc, char *argv[])
 
     opts.tolower = true;
 
-    if (argc > 0 && argv[1][0] == '-')
+    if (argc > 1 && argv[1][0] == '-')
         switch ((opt = argv[1][1])) {
             case 'h':
                 opts.help = true;
@@ -121,7 +121,7 @@ void read_card()
 }
 
 /* set_properties: Set the card's properties. */
-void set_properties(int cnt, bool eof)
+void set_properties(int count, bool eof)
 {
     static const char* const par[] = {
         "AUTHOR.",
@@ -136,9 +136,9 @@ void set_properties(int cnt, bool eof)
     const char ind = card.data[ind_area];
 
     card.eof = eof;
-    card.has_data = (cnt > 0);
-    card.has_comment_area = (cnt == comment_area);
-    card.is_comment_line = (cnt>0 && (ind=='*' || ind=='/' || ind=='$'));
+    card.has_data = (count > 0);
+    card.has_comment_area = (count == comment_area);
+    card.is_comment_line = (count>0 && (ind=='*' || ind=='/' || ind=='$'));
 
     card.is_comment_par = false; /* default */
     for (int i = 0; i < size; ++i)
