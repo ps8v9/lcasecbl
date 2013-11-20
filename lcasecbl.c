@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ps8getopt.h" /* from https://github.com/ps8v9/ps8getopt */
+
 /* These magic numbers will never change. Fixed format is fixed forever. */
 #define CARD_SIZE 73
 const int seq_area     =  0; /* start of sequence area */
@@ -57,7 +59,7 @@ int main(int argc, char *argv[])
         return err_code;
 
     if (opts.help) {
-        fprintf(stderr, "usage: %s [-h] [-l] [-L]\n", argv[0]);
+        fprintf(stderr, "usage: %s [-h] [-u]\n", argv[0]);
         return 0;
     }
 
@@ -71,26 +73,29 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-/* getopts: Simple option processing. */
+/* getopts: Process command line options. */
 int getopts(int argc, char *argv[])
 {
-    int err_code = 0;
+    extern int ps8_optopt; /* equivalent to getopt's optopt */
+    extern int ps8_opterr; /* equivalent to getopt's opterr */
+
     char opt;
+    int err_code = 0;
 
     opts.tolower = true;
+    ps8_opterr = 0;
 
-    if (argc > 1 && argv[1][0] == '-')
-        switch ((opt = argv[1][1])) {
-            case 'h':
+    while ((opt = ps8_getopt (argc, argv, "hu")) != -1)
+        switch (opt) {
+            case 'h':  /* help */
                 opts.help = true;
                 break;
-            case 'l':
-                break;
-            case 'L':
+            case 'u':  /* uppercase */
                 opts.tolower = false;
                 break;
-            default:
-                fprintf(stderr, "%s: unknown option: -%c\n", argv[0], opt);
+            case '?':
+                fprintf(stderr, "%s: unknown option: -%c\n",
+                  argv[0], ps8_optopt);
                 err_code = 1;
                 break;
         }

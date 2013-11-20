@@ -21,8 +21,7 @@ Options
 A few options are supported. Options may start with either a hyphen (-) or a slash (/).
 
     -h  Help.       Show the usage statement.
-    -l  Lowercase.  Convert code to lowercase.
-    -L  Uppercase.  Convert code to the opposite of lowercase.
+    -u  Uppercase.  Convert code to uppercase rather than to lowercase.
 
 Assumptions
 ===========
@@ -50,13 +49,13 @@ breaks. Continuation lines have a hyphen in the indicator area.
 Normal lines have a space in the indicator area.
 
 Conditional debugging lines have a 'D' or 'd' in the indicator area, and are
-treated like normal lines.
+treated here like normal lines.
 
 Comment lines have one of the following in the indicator area: an asterisk (*),
 a slash (/), or a dollar sign ($).
 
-Lines may continue beyond the comment area, but anything past column 80 is
-considered to be a comment.
+Lines may continue beyond the comment area, which starts in column 73 and ends
+in column 80. Everything past column 72 is considered to be a comment.
 
 Caveats
 =======
