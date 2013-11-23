@@ -1,7 +1,6 @@
 #################
 ## Custom list
 #################
-*.bat
 *.cbl
 *.exe
 ps8getopt.*
